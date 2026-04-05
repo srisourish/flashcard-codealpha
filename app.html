@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashMind — Study Cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e11;
+    --surface: #18161c;
+    --card-front: #1e1b24;
+    --card-back: #14202e;
+    --accent: #e8c547;
+    --accent2: #7b6ef6;
+    --text: #f0eef5;
+    --muted: #7a7585;
+    --border: rgba(255,255,255,0.07);
+    --shadow: 0 32px 80px rgba(0,0,0,0.6);
+    --radius: 20px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(123,110,246,0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(232,197,71,0.08) 0%, transparent 50%);
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 44px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent) 0%, #f0c060 40%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .progress-bar-wrap {
+    width: 100%;
+    max-width: 540px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 10px;
+    margin-bottom: 28px;
+    overflow: hidden;
+    animation: fadeDown 0.6s 0.1s ease both;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 10px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-counter {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: right;
+    max-width: 540px;
+    width: 100%;
+    margin-bottom: 10px;
+    animation: fadeDown 0.6s 0.15s ease both;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  /* FLASHCARD */
+  .scene {
+    width: 100%;
+    max-width: 540px;
+    height: 320px;
+    perspective: 1200px;
+    animation: fadeUp 0.6s 0.2s ease both;
+    opacity: 0;
+    animation-fill-mode: forwards;
+    cursor: pointer;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--radius);
+  }
+
+  .card.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 40px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .card-front {
+    background: var(--card-front);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  .card-back {
+    background: var(--card-back);
+    transform: rotateY(180deg);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  .face-label {
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    position: absolute;
+    top: 18px;
+    left: 24px;
+  }
+
+  .card-front .face-label { color: var(--accent2); opacity: 0.8; }
+  .card-back .face-label { color: var(--accent); opacity: 0.8; }
+
+  .card-text {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    text-align: center;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  .card-hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    position: absolute;
+    bottom: 18px;
+  }
+
+  /* CONTROLS */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    max-width: 540px;
+    animation: fadeUp 0.6s 0.3s ease both;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 12px;
+    padding: 12px 20px;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+  }
+
+  .btn:active { transform: scale(0.96); }
+
+  .btn-nav {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    flex: 1;
+  }
+
+  .btn-nav:hover:not(:disabled) {
+    background: #252230;
+    border-color: rgba(255,255,255,0.14);
+  }
+
+  .btn-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-show {
+    background: linear-gradient(135deg, var(--accent2), #9b8ff8);
+    color: #fff;
+    flex: 2;
+    box-shadow: 0 6px 24px rgba(123,110,246,0.35);
+  }
+
+  .btn-show:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 32px rgba(123,110,246,0.45);
+  }
+
+  /* MANAGE SECTION */
+  .manage-toggle {
+    margin-top: 40px;
+    text-align: center;
+    animation: fadeUp 0.6s 0.4s ease both;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  .btn-manage {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 9px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-manage:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+  .manage-panel {
+    width: 100%;
+    max-width: 540px;
+    margin-top: 28px;
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .manage-panel.open { display: flex; }
+
+  .manage-panel h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    margin-bottom: 4px;
+  }
+
+  .input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .input-row input, .input-row textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+
+  .input-row input:focus, .input-row textarea:focus {
+    border-color: var(--accent2);
+  }
+
+  .input-row input::placeholder, .input-row textarea::placeholder { color: var(--muted); }
+
+  .btn-add {
+    background: linear-gradient(135deg, var(--accent), #f5d060);
+    color: #1a1600;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    box-shadow: 0 6px 20px rgba(232,197,71,0.3);
+  }
+
+  .btn-add:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(232,197,71,0.4); }
+
+  .card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .card-list::-webkit-scrollbar { width: 4px; }
+  .card-list::-webkit-scrollbar-track { background: transparent; }
+  .card-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .card-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .card-item-text { flex: 1; }
+
+  .card-item-q {
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+
+  .card-item-a {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .card-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .btn-icon {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+
+  .btn-icon:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+  .btn-icon.delete:hover { color: #f87171; border-color: rgba(248,113,113,0.4); }
+  .btn-icon.edit-active { color: var(--accent); border-color: var(--accent); }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 32px 0;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .card-anim { animation: slideIn 0.32s cubic-bezier(0.4,0,0.2,1) both; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FlashMind</h1>
+  <p>Study smarter, not harder</p>
+</header>
+
+<div class="progress-bar-wrap">
+  <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="card-counter" id="cardCounter">Card 1 of 5</div>
+
+<div class="scene" id="scene" onclick="toggleFlip()">
+  <div class="card" id="card">
+    <div class="card-face card-front">
+      <span class="face-label">Question</span>
+      <p class="card-text" id="questionText"></p>
+      <span class="card-hint">click to flip</span>
+    </div>
+    <div class="card-face card-back">
+      <span class="face-label">Answer</span>
+      <p class="card-text" id="answerText"></p>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-nav" id="prevBtn" onclick="navigate(-1)">← Prev</button>
+  <button class="btn btn-show" onclick="toggleFlip()">Show Answer</button>
+  <button class="btn btn-nav" id="nextBtn" onclick="navigate(1)">Next →</button>
+</div>
+
+<div class="manage-toggle">
+  <button class="btn-manage" onclick="toggleManage()">⚙ Manage Cards</button>
+</div>
+
+<div class="manage-panel" id="managePanel">
+  <h2>Add a Card</h2>
+  <div class="input-row">
+    <input type="text" id="inputQ" placeholder="Question…" />
+    <textarea id="inputA" rows="2" placeholder="Answer…"></textarea>
+    <button class="btn-add" onclick="addOrUpdateCard()">Add Card</button>
+  </div>
+
+  <h2 style="margin-top:8px">Your Cards</h2>
+  <div class="card-list" id="cardList"></div>
+</div>
+
+<script>
+  let cards = [
+    { q: "What is the powerhouse of the cell?", a: "The mitochondria — it produces ATP through cellular respiration." },
+    { q: "What is Newton's Second Law of Motion?", a: "F = ma — Force equals mass times acceleration." },
+    { q: "Who wrote 'Pride and Prejudice'?", a: "Jane Austen, published in 1813." },
+    { q: "What is the speed of light in a vacuum?", a: "Approximately 299,792,458 metres per second (≈ 3 × 10⁸ m/s)." },
+    { q: "What does HTML stand for?", a: "HyperText Markup Language — the standard language for creating web pages." },
+  ];
+
+  let current = 0;
+  let flipped = false;
+  let editingIndex = -1;
+
+  function render() {
+    if (cards.length === 0) {
+      document.getElementById('questionText').textContent = "No cards yet! Add some below.";
+      document.getElementById('answerText').textContent = "";
+    } else {
+      document.getElementById('questionText').textContent = cards[current].q;
+      document.getElementById('answerText').textContent = cards[current].a;
+    }
+    const total = cards.length || 1;
+    document.getElementById('cardCounter').textContent = `Card ${cards.length ? current + 1 : 0} of ${cards.length}`;
+    document.getElementById('progressBar').style.width = `${((current + 1) / total) * 100}%`;
+    document.getElementById('prevBtn').disabled = current === 0 || cards.length === 0;
+    document.getElementById('nextBtn').disabled = current >= cards.length - 1 || cards.length === 0;
+    resetFlip();
+    renderList();
+  }
+
+  function resetFlip() {
+    flipped = false;
+    document.getElementById('card').classList.remove('flipped');
+  }
+
+  function toggleFlip() {
+    if (cards.length === 0) return;
+    flipped = !flipped;
+    document.getElementById('card').classList.toggle('flipped', flipped);
+  }
+
+  function navigate(dir) {
+    current = Math.min(Math.max(0, current + dir), cards.length - 1);
+    document.getElementById('card').classList.add('card-anim');
+    setTimeout(() => document.getElementById('card').classList.remove('card-anim'), 350);
+    render();
+  }
+
+  function toggleManage() {
+    const p = document.getElementById('managePanel');
+    p.classList.toggle('open');
+  }
+
+  function renderList() {
+    const list = document.getElementById('cardList');
+    if (cards.length === 0) {
+      list.innerHTML = '<div class="empty-state">No cards yet. Add your first one above!</div>';
+      return;
+    }
+    list.innerHTML = cards.map((c, i) => `
+      <div class="card-item">
+        <div class="card-item-text">
+          <div class="card-item-q">${escHtml(c.q)}</div>
+          <div class="card-item-a">${escHtml(c.a)}</div>
+        </div>
+        <div class="card-item-actions">
+          <button class="btn-icon ${editingIndex === i ? 'edit-active' : ''}" onclick="startEdit(${i})">Edit</button>
+          <button class="btn-icon delete" onclick="deleteCard(${i})">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function addOrUpdateCard() {
+    const q = document.getElementById('inputQ').value.trim();
+    const a = document.getElementById('inputA').value.trim();
+    if (!q || !a) { shake(); return; }
+
+    if (editingIndex >= 0) {
+      cards[editingIndex] = { q, a };
+      editingIndex = -1;
+      document.querySelector('.btn-add').textContent = 'Add Card';
+    } else {
+      cards.push({ q, a });
+      current = cards.length - 1;
+    }
+
+    document.getElementById('inputQ').value = '';
+    document.getElementById('inputA').value = '';
+    render();
+  }
+
+  function startEdit(i) {
+    if (editingIndex === i) {
+      editingIndex = -1;
+      document.getElementById('inputQ').value = '';
+      document.getElementById('inputA').value = '';
+      document.querySelector('.btn-add').textContent = 'Add Card';
+      renderList();
+      return;
+    }
+    editingIndex = i;
+    document.getElementById('inputQ').value = cards[i].q;
+    document.getElementById('inputA').value = cards[i].a;
+    document.querySelector('.btn-add').textContent = 'Update Card';
+    document.getElementById('inputQ').focus();
+    renderList();
+  }
+
+  function deleteCard(i) {
+    cards.splice(i, 1);
+    if (current >= cards.length) current = Math.max(0, cards.length - 1);
+    if (editingIndex === i) {
+      editingIndex = -1;
+      document.getElementById('inputQ').value = '';
+      document.getElementById('inputA').value = '';
+      document.querySelector('.btn-add').textContent = 'Add Card';
+    }
+    render();
+  }
+
+  function shake() {
+    const panel = document.getElementById('managePanel');
+    panel.style.animation = 'none';
+    panel.style.transform = 'translateX(-6px)';
+    setTimeout(() => { panel.style.transition = 'transform 0.4s ease'; panel.style.transform = ''; }, 10);
+    setTimeout(() => { panel.style.transition = ''; }, 500);
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowLeft') navigate(-1);
+    if (e.key === 'ArrowRight') navigate(1);
+    if (e.key === ' ') { e.preventDefault(); toggleFlip(); }
+  });
+
+  render();
+</script>
+</body>
+</html>
